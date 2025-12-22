@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="DB5.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="5708"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="BIEN" custom_title="0" dock_id="1" table="4,4:mainBIEN"/><dock_state state="000000ff00000000fd00000001000000020000038a000002d2fc0100000001fb000000160064006f0063006b00420072006f007700730065003101000000000000038a000001c900ffffff0000038a0000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="BIEN" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="52"/><column index="2" value="93"/><column index="3" value="99"/><column index="4" value="95"/><column index="5" value="119"/><column index="6" value="163"/><column index="7" value="99"/><column index="8" value="101"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">-- 1. Nombre total d’appartements vendus au 1er semestre 2020
+SELECT COUNT(*) AS Total_Appartements_S1
+FROM Bien
+WHERE Type_Local LIKE 'Appartement%' 
+AND Date_Mutation BETWEEN '2020-01-01' AND '2020-06-30';
+</sql><sql name="SQL 2">
+-- 2. Le nombre de ventes d’appartement par région pour le 1er semestre 2020
+SELECT r.Nom_Region, COUNT(b.ID_Bien) AS Nombre_Ventes
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+JOIN DEPARTEMENT d ON c.Code_Departement = d.Code_Departement
+JOIN REGION r ON d.Code_Region = r.Code_Region
+WHERE b.Type_Local LIKE 'Appartement%' 
+AND b.Date_Mutation BETWEEN '2020-01-01' AND '2020-06-30'
+GROUP BY r.Nom_Region;
+</sql><sql name="SQL 3">
+
+
+-- 3. Proportion des ventes d’appartements par le nombre de pièces
+SELECT Nombre_pieces_principales, 
+       COUNT(*) AS Nb_Ventes,
+       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM Bien WHERE Type_Local LIKE 'Appartement%'), 2) || '%' AS Proportion
+FROM Bien
+WHERE Type_Local LIKE 'Appartement%'
+GROUP BY Nombre_pieces_principales;
+
+
+</sql><sql name="SQL 4">
+-- 4. Liste des 10 départements où le prix du mètre carré est le plus élevé
+SELECT d.Code_Departement, d.Nom_Departement, 
+       ROUND(AVG(b.Valeur_Fonciere / b.Surface_reelle_bati), 2) AS Prix_m2_Moyen
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+JOIN DEPARTEMENT d ON c.Code_Departement = d.Code_Departement
+WHERE b.Surface_reelle_bati &gt; 0
+GROUP BY d.Code_Departement, d.Nom_Departement
+ORDER BY Prix_m2_Moyen DESC
+LIMIT 10;
+
+</sql><sql name="SQL 5">-- 5. Prix moyen du mètre carré d’une maison en Île-de-France
+SELECT ROUND(AVG(b.Valeur_Fonciere / b.Surface_reelle_bati), 2) AS Prix_m2_Moyen_IDF
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+JOIN DEPARTEMENT d ON c.Code_Departement = d.Code_Departement
+JOIN REGION r ON d.Code_Region = r.Code_Region
+WHERE b.Type_Local LIKE 'Maison%' 
+AND r.Nom_Region = 'Ile-de-France'
+AND b.Surface_reelle_bati &gt; 0;
+
+
+
+</sql><sql name="SQL 6">-- 6. Liste des 10 appartements les plus chers avec la région et le nombre de mètres carrés
+SELECT r.Nom_Region, b.Surface_reelle_bati, b.Valeur_Fonciere
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+JOIN DEPARTEMENT d ON c.Code_Departement = d.Code_Departement
+JOIN REGION r ON d.Code_Region = r.Code_Region
+WHERE b.Type_Local LIKE 'Appartement%'
+ORDER BY b.Valeur_Fonciere DESC
+LIMIT 10;
+
+</sql><sql name="SQL 7">
+
+-- 7. Taux d’évolution du nombre de ventes entre le premier et le second trimestre de 2020
+WITH Ventes_T1 AS (
+    SELECT COUNT(*) AS Nb_T1 FROM Bien 
+    WHERE Date_Mutation BETWEEN '2020-01-01' AND '2020-03-31'
+),
+Ventes_T2 AS (
+    SELECT COUNT(*) AS Nb_T2 FROM Bien 
+    WHERE Date_Mutation BETWEEN '2020-04-01' AND '2020-06-30'
+)
+SELECT Nb_T1, Nb_T2,
+       ROUND(((CAST(Nb_T2 AS FLOAT) - Nb_T1) / Nb_T1) * 100, 2) || '%' AS Taux_Evolution
+FROM Ventes_T1, Ventes_T2;
+
+
+</sql><sql name="SQL 8">-- 8. Le classement des régions par rapport au prix au mètre carré des appartement de plus de 4 pièces
+SELECT r.Nom_Region, ROUND(AVG(b.Valeur_Fonciere / b.Surface_reelle_bati), 2) AS Prix_m2_Moyen
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+JOIN DEPARTEMENT d ON c.Code_Departement = d.Code_Departement
+JOIN REGION r ON d.Code_Region = r.Code_Region
+WHERE b.Type_Local LIKE 'Appartement%' 
+AND b.Nombre_pieces_principales &gt; 4
+AND b.Surface_reelle_bati &gt; 0
+GROUP BY r.Nom_Region
+ORDER BY Prix_m2_Moyen DESC;
+</sql><sql name="SQL 9">
+-- 9. Liste des communes ayant eu au moins 50 ventes au 1er trimestre 2020
+SELECT c.Nom_Commune, COUNT(b.ID_Bien) AS Nb_Ventes
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+WHERE b.Date_Mutation BETWEEN '2020-01-01' AND '2020-03-31'
+GROUP BY c.Code_Commune, c.Nom_Commune
+HAVING Nb_Ventes &gt;= 50
+ORDER BY Nb_Ventes DESC;
+
+</sql><sql name="SQL 10">-- 10. Différence en pourcentage du prix au mètre carré entre un appartement de 2 pièces et un appartement de 3 pièces
+WITH Prix_T2 AS (
+    SELECT AVG(Valeur_Fonciere / Surface_reelle_bati) AS Moyenne_T2
+    FROM Bien WHERE Nombre_pieces_principales = 2 AND Type_Local LIKE 'Appartement%' AND Surface_reelle_bati &gt; 0
+),
+Prix_T3 AS (
+    SELECT AVG(Valeur_Fonciere / Surface_reelle_bati) AS Moyenne_T3
+    FROM Bien WHERE Nombre_pieces_principales = 3 AND Type_Local LIKE 'Appartement%' AND Surface_reelle_bati &gt; 0
+)
+SELECT ROUND(((Moyenne_T3 - Moyenne_T2) / Moyenne_T2) * 100, 2) || '%' AS Diff_Pourcentage
+FROM Prix_T2, Prix_T3;
+</sql><sql name="SQL 11">-- 11. Les moyennes de valeurs foncières pour le top 3 des communes des départements 6, 13, 33, 59 et 69
+WITH Moyennes AS (
+    SELECT d.Code_Departement, c.Nom_Commune, AVG(b.Valeur_Fonciere) AS Moyenne_Commune,
+           RANK() OVER (PARTITION BY d.Code_Departement ORDER BY AVG(b.Valeur_Fonciere) DESC) AS Rang
+    FROM Bien b
+    JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+    JOIN DEPARTEMENT d ON c.Code_Departement = d.Code_Departement
+    WHERE d.Code_Departement IN ('06', '13', '33', '59', '69')
+    GROUP BY d.Code_Departement, c.Nom_Commune
+)
+SELECT Code_Departement, Nom_Commune, ROUND(Moyenne_Commune, 2) AS Moyenne_Valeur
+FROM Moyennes
+WHERE Rang &lt;= 3;
+</sql><sql name="SQL 12">
+-- 12. Les 20 communes avec le plus de transactions pour 1000 habitants (villes &gt; 10 000 hab)
+SELECT c.Nom_Commune, 
+       c.Population_Totale,
+       COUNT(b.ID_Bien) AS Nb_Transactions,
+       ROUND((COUNT(b.ID_Bien) * 1000.0) / c.Population_Totale, 2) AS Transactions_pour_1000_hab
+FROM Bien b
+JOIN COMMUNE c ON printf('%05s', TRIM(b.Code_Commune)) = printf('%05s', TRIM(c.Code_Commune))
+WHERE c.Population_Totale &gt; 10000
+GROUP BY c.Code_Commune, c.Nom_Commune, c.Population_Totale
+ORDER BY Transactions_pour_1000_hab DESC
+LIMIT 20;
+
+</sql><current_tab id="0"/></tab_sql></sqlb_project>
